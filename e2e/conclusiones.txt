@@ -67,12 +67,17 @@ DECISIONES DE DISEÑO TOMADAS Y SU JUSTIFICACION
      diferentes estrategias para poder realizar la compra.
 
 7. Soporte multi-browser
-   - El DriverFactory solo soporta Chrome, Firefox y Edge mediante el parametro
-     -Dbrowser=<chrome|firefox|edge>.
-   - Opera y Brave perdieron el soporte oficialmente en Selenium 4 y por lo que se descartaron
-     como navegadores a tener en cuenta para ejecutar los tests.
-   - Esta configuración sirve para poder fácilmente agregar nuevos navegadores a nuestros
-     test sin la necesidad de tocar mucho codigo. 
+   - El DriverFactory soporta Chrome y Firefox mediante el parametro
+     -Dbrowser=<chrome|firefox>. Default: Chrome.
+   - Edge quedo afuera porque Microsoft retiro el CDN azureedge.net
+     donde Selenium 4.16.1 busca el msedgedriver, asi que el download del
+     driver falla con un DNS error. Para sumarlo habria que subir Selenium
+     a >= 4.21, cosa que no hice al final del proyecto para no arriesgar
+     regresiones en el flujo de Chrome. Queda como mejora futura.
+   - Opera y Brave perdieron el soporte oficialmente en Selenium 4 y por
+     eso tambien quedaron afuera.
+   - El patron del DriverFactory deja la puerta abierta para sumar
+     browsers nuevos con minimo codigo.
 
 8. Modo headless configurable
    - Tener el modo headless como flag (-Dheadless=true|false) permite alternar
@@ -228,7 +233,7 @@ COSAS QUE PASARON DURANTE EL DESARROLLO Y EJECUCION
   flujo del test. Lo solucione agregando preferencias al DriverFactory para
   deshabilitar el password manager y la deteccion de filtraciones
   (credentials_enable_service, profile.password_manager_enabled,
-  profile.password_manager_leak_detection). Aplicado tambien a Edge y
+  profile.password_manager_leak_detection). Aplicado tambien a
   Firefox con sus prefs equivalentes.
 
 - Selenium 4.16.1 emite un warning sobre Chrome DevTools Protocol (CDP)

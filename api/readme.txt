@@ -21,15 +21,58 @@ con otros usuarios del sandbox publico de PetStore.
 REQUISITOS
 ----------
 
-- Java JDK 17 o superior (JAVA_HOME apuntando al JDK, no al JRE).
-  Recomendado: Eclipse Temurin 17
-  (https://adoptium.net/temurin/releases/?version=17).
-  Verificar con:
-      java -version
-- Apache Maven 3.9.x (https://maven.apache.org/download.cgi).
-  Verificar con:
-      mvn -version
+- Java JDK 17 o superior
+- Apache Maven 3.9.x
 - Conexion a internet para alcanzar https://petstore.swagger.io
+
+Pasos de instalacion en la seccion siguiente (asumen Windows 10/11).
+
+---------------------
+INSTALACION (Windows)
+---------------------
+
+Si ya hiciste el setup para el modulo E2E (ver e2e/readme.txt), saltate
+esta seccion: es exactamente el mismo Java 17 + Maven 3.9.x, no hace
+falta instalarlos de nuevo.
+
+Esta guia cubre Windows 10/11 unicamente. En Mac y Linux los pasos
+de instalacion son distintos (brew/apt para instalar, ~/.zshrc o
+~/.bashrc para configurar PATH y JAVA_HOME) y no estan documentados
+aca. El objetivo es el mismo en cualquier OS: que java -version y
+mvn -version respondan en la terminal con las versiones correctas.
+
+1. Java JDK 17 (Eclipse Temurin recomendado):
+       https://adoptium.net/temurin/releases/?version=17
+   Bajar el MSI y correrlo. Durante el wizard, dejar marcadas las
+   opciones "Set JAVA_HOME variable" y "Add to PATH" (vienen activas
+   por default). Asi el instalador hace el laburo de env vars solo
+   y no hay que tocar nada a mano.
+
+2. Apache Maven 3.9.x:
+       https://maven.apache.org/download.cgi
+   Bajar el "Binary zip archive" (NO bajar el Source ni el Preview
+   4.x, son cosas distintas). Extraer el zip en tu carpeta de
+   usuario, queda:
+       C:\Users\<tu-usuario>\apache-maven-3.9.X\
+
+3. Agregar Maven al PATH del usuario (eleji una):
+   - PowerShell, una linea:
+       [Environment]::SetEnvironmentVariable("Path", [Environment]::GetEnvironmentVariable("Path", "User") + ";$env:USERPROFILE\apache-maven-3.9.X\bin", "User")
+     (Ajustar 3.9.X a la version que descargaste)
+   - UI:
+       Win + R -> sysdm.cpl -> "Opciones avanzadas" ->
+       "Variables de entorno..." -> bajo "Variables de usuario"
+       editar Path -> "Nuevo" -> pegar la ruta a bin\.
+
+4. Cerrar VSCode (o tu IDE/terminal) entero y reabrirlo. Si estaba
+   abierto durante los pasos anteriores, no ve los cambios de PATH
+   ni JAVA_HOME hasta que reinicia.
+
+5. Verificar en una terminal nueva:
+       java -version       (deberia decir Temurin 17.x.x)
+       mvn -version        (deberia decir Maven 3.9.X reconociendo el JDK 17)
+
+Si los 3 responden bien, todo listo para correr los tests.
 
 ---------
 EJECUCION

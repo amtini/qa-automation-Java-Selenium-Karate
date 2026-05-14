@@ -1,0 +1,254 @@
+----------------------------
+SOBRE LA EVOLUCION DEL SUITE
+----------------------------
+
+Los POMs son artefactos vivos. Tienen que evolucionar a medida que el
+sitio cambia: cuando aparece un nuevo elemento, cuando se modifica la
+estructura del DOM, cuando se agregan flujos. Lo que entregamos aca es la
+foto del estado actual del sitio (SauceDemo), modelando
+solo lo necesario para cubrir el flujo solicitado.
+
+Si el sitio cambia, los Page Objects son el primer lugar donde hay que tocar.
+El test queda intacto siempre que la interfaz publica de los Page Objects
+se mantenga. Esa es la ganancia del patron.
+
+-----------------------------------------------
+DECISIONES DE DISEÑO TOMADAS Y SU JUSTIFICACION
+-----------------------------------------------
+
+1. Patron Page Object Model con HeaderComponent
+   - Cada pagina del sitio tiene su clase POM
+   - El header (icono del carrito + badge) aparece en multiples paginas, por lo
+     que se modelo como HeaderComponent para que sea reutilizable en lugar de duplicar
+     codigo en cada Page Object.
+
+2. Agregado de productos desde dos flujos distintos
+   - Un producto se agrega desde la lista de inventario.
+   - El segundo producto se agrega desde la pagina de detalle del producto.
+   - Razon: cumple con el requisito de "agregar dos productos" cubriendo dos
+     caminos reales de usuario, no solo uno. Esto amplia la posibilidad de que en 
+     futuros test usemos diferentes formas de añadir al carrito.
+
+3. Validacion entre vistas porque no hay API ni fuente externa
+   - SauceDemo no tiene API publica, asi que no puedo comparar el
+     carrito contra una fuente de verdad. Lo que hago es capturar
+     nombre, precio y descripcion al momento de agregar cada producto
+     (desde inventario o desde la pagina de detalle) y comparar esos
+     datos contra lo que muestra el carrito y el step 2.
+   - Detecta cualquier discrepancia entre lo que el usuario agrega y
+     lo que el sitio termina mostrando. Si la pagina de inventario ya
+     mostrara datos mal de entrada, eso requeriria una API externa para
+     validarlo, cosa que excede el alcance.
+
+4. Validacion del subtotal en el checkout
+   - Calculo la suma de precios en el carrito y la comparo contra el "Item Total"
+     del step 2.
+   - No valido el tax ni el total final, por dos razones. Una: no tengo acceso
+     a la tasa que aplica SauceDemo (no esta publicada como API). Dos: validar
+     que "subtotal + tax = total" seria testear la matematica del sitio, no el
+     flujo de compra que es lo que pide el ejercicio.
+   - Si en el futuro tuviera la tasa disponible, o quisiera validar la
+     consistencia interna del calculo, se podria agregar como mejora.
+
+5. Botones no ejercitados (Continue Shopping, Cancel)
+   - El sitio tiene botones de "Continue Shopping" en el carrito y "Cancel"
+     en los pasos del checkout. No se modelaron en los Page Objects porque
+     no son parte del flujo solicitado en las instrucciones.
+   - Razon: Es preferible evitar codigo no testeado.
+
+6. Informacion de pago y envio en CheckoutStepTwo
+   - La información de pago y envío es información estatica, no tiene ningún
+     tipo de control interactivo o selector para elegir otras opciones.
+     Esto hace que solo pueda validar el texto "SauceCard #31337" y el
+     "Free Pony Express Delivery!".
+   - ¿Por qué lo valido? para sentar las bases futuras de validar
+     método de pago y envío seleccionado en el checkout.
+     En un sitio real, estos campos serian selectores y tendríamos que tener
+     diferentes estrategias para poder realizar la compra.
+
+7. Soporte multi-browser
+   - El DriverFactory solo soporta Chrome, Firefox y Edge mediante el parametro
+     -Dbrowser=<chrome|firefox|edge>.
+   - Opera y Brave perdieron el soporte oficialmente en Selenium 4 y por lo que se descartaron
+     como navegadores a tener en cuenta para ejecutar los tests.
+   - Esta configuración sirve para poder fácilmente agregar nuevos navegadores a nuestros
+     test sin la necesidad de tocar mucho codigo. 
+
+8. Modo headless configurable
+   - Tener el modo headless como flag (-Dheadless=true|false) permite alternar
+     entre ver el browser durante debug manual y correr sin UI en un CI.
+   - Esto también nos ayuda a configurar a futuro un posible CI como Jenkins
+     o GitHub Actions.
+
+9. Centralización de la configuración en Config
+   - Toda la config (browser, headless, baseUrl, waits) se lee desde una
+     sola clase. Ningún otro archivo del proyecto toca System.getProperty
+     o el .properties.
+   - El archivo config.properties define los valores default; los flags -D
+     los pisan en runtime. Útil para que CI use otros valores sin editar
+     nada.
+   - Los métodos devuelven el tipo correcto (boolean, int, String), así el
+     parsing no se repite cada vez que se consulta.
+   - Si el origen de la config cambia más adelante (env vars, vault, etc.),
+     se toca solo Config.java.
+
+10. Separacion entre data/ y factories/
+    - data/ contiene la "forma" de los datos: records (Product, CheckoutFormData)
+      y constantes (Products). Define QUE es un producto, no como crearlo.
+    - factories/ contiene la "construccion": DriverFactory crea WebDrivers,
+      DataFactory crea CheckoutFormData con valores aleatorios via DataFaker.
+      Define COMO se produce una instancia.
+    - La separacion importa porque un mismo record se puede crear desde
+      varios lugares. La factory lo genera con valores fake, y en nuestro
+      caso tambien capturo Products leyendo el DOM, ya sea desde
+      InventoryPage o desde ProductDetailPage.
+
+11. Estrategia de localizadores: 
+    - Mi experiencia con Playwright me acostumbró a usar data-testid en
+      los elementos. Una mirada rápida al HTML de SauceDemo me confirmó
+      que todos los elementos importantes tienen su data-test attribute,
+      así que arranqué directo con esa estrategia.
+    - ¿Por qué elegí usar solo data-test?
+      Es la mejor forma de tener un contrato explícito entre devs y QA.
+      Cualquier otro localizador (id, clase CSS, XPath) puede cambiar con
+      un refactor de UI. Los data-test no, porque existen específicamente
+      para automation.
+    - Tambien evite por completo localizar por texto visible (By.linkText, etc.)
+      en el flujo principal, porque rompe con cualquier traduccion del sitio.
+
+12. Accessor pattern para exponer componentes a los tests
+    - Tenia dos opciones para que los tests usaran HeaderComponent desde
+      cada pagina: delegar cada metodo (page.cartItemCount() llama
+      internamente a header.cartItemCount()) o exponer el componente con
+      un accessor (page.header().cartItemCount()).
+    - Elegi el accessor. Si manana agrego logout() o resetAppState() a
+      HeaderComponent, no tengo que tocar las 5 paginas que lo usan.
+    - El test queda explicito: "consulto el header de esta pagina", la
+      composicion no se esconde.
+
+13. Reporting custom con categorias PASSED / BUG / FAILED + JSON exportable
+    - Empece con Allure y termine sacándolo. Prefiero armar mi propio
+      output con categorías por tipo de error y un JSON exportable que
+      pueda alimentar Jira, Linear o un webhook de Slack. Mas portable,
+      no depende de un CLI externo y la categorización de errores es
+      explicita.
+    - TestListener categoriza cada falla por tipo de excepcion:
+      * AssertionError -> "BUG" (el sitio no cumplio con lo esperado).
+      * Cualquier otra excepcion (Selenium, NPE, etc.) -> "FAILED" (problema
+        de automation o infra).
+      * Test sin excepcion -> "PASSED".
+    - Cada resultado se imprime en consola con un banner claro (status, test,
+      tiempo, motivo, ubicacion, screenshot si aplica).
+    - Al final de la suite se escribe target/test-results.json con:
+      * totales por categoria
+      * lista de tests con nombre, status, duracion, motivo, ubicacion, y
+        path al screenshot si fallo.
+
+14. Soporte para multiples entornos
+    - Config.java lee la variable -Denv (default "dev"). Si corro
+      mvn test -Denv=staging, baseUrl apunta al entorno de staging
+      en vez del default.
+    - Asi el mismo suite corre contra distintos entornos sin tocar
+      los Page Objects. Las URLs alternativas son placeholders porque
+      SauceDemo solo expone el sitio publico, pero el patron queda
+      listo para una app privada con varios deployments.
+
+
+---------------------------------------------
+LIMITACIONES OBSERVADAS DEL SITIO (SauceDemo)
+---------------------------------------------
+
+- No hay selector de cantidad. Una vez un producto es agregado al carrito,
+  el botón "Add to cart" se reemplaza por "Remove", así que solo se puede 
+  tener una unidad de cada producto.
+- Los datos de pago y envio son estaticos. No se puede simular un fallo de
+  tarjeta, una direccion invalida, etc.
+- No hay autenticacion real, son usuarios mock. No hay sesion persistente
+  ni tokens.
+- No hay funcionalidad de busqueda ni filtros, solo un sort dropdown.
+- La pagina de detalle de producto es practicamente identica al item del
+  inventario en informacion, solo agrega una imagen mas grande.
+
+-----------------------------
+MEJORAS FUTURAS PARA EL SUITE
+-----------------------------
+
+Test parametrizado (en lugar de muchos tests separados):
+En proyectos anteriores trabaje con un enfoque parametrizado donde un solo
+test method recorre N escenarios definidos como data, en lugar de duplicar
+el flujo en multiples tests separados. Por ejemplo, en un proyecto de
+checkout previo manejaba escenarios con dimensiones como locale, currency,
+payment method, tipo de producto, tipo de usuario (guest vs logged-in) y
+si el flujo se completa o se cancela mid-camino. Un mismo .spec.ts iteraba
+sobre la lista y generaba un test por combinacion.
+
+Aplicado a SauceDemo, esto permitiria cubrir desde un solo test method:
+- Distintos usuarios (standard_user, locked_out_user, problem_user,
+  performance_glitch_user) cada uno con un comportamiento esperado distinto.
+- Distintos modos de completar el flujo: completar todo, cancelar en
+  step 1, cancelar en step 2, volver desde el carrito con "Continue
+  Shopping".
+- Distintas combinaciones de productos.
+- Casos edge con expectedError (login bloqueado, datos faltantes en
+  formulario, etc.).
+
+La categorizacion del TestListener (PASSED / BUG / FAILED) acompaña bien
+este enfoque: cada escenario produce su propia entrada en el JSON con su
+status, sin que la lista de tests del reporte se infle artificialmente.
+
+Tests adicionales que cubriria este enfoque parametrizado:
+- Login con locked_out_user (validacion de mensaje de error).
+- Login con problem_user (UI rota a proposito, util para detectar
+  problemas conocidos en componentes que renderizan productos).
+- Login con performance_glitch_user (delays artificiales, util para
+  validar que los waits explicitos aguantan).
+- Validacion del flujo "Continue Shopping" desde el carrito.
+- Validacion del flujo "Cancel" en cada paso del checkout.
+- Validacion del total final y tax en checkout step 2 (requeriria
+  conocer la tasa que aplica el sitio).
+
+Infraestructura:
+- Pipeline CI/CD con GitHub Actions corriendo en headless para que el
+  suite se ejecute en cada PR o push a main.
+- Ejecucion paralela del suite cuando crezca, para mantener los tiempos
+  de feedback bajos.
+
+Calidad de codigo:
+- Externalizar la data del test parametrizado a un archivo JSON o CSV,
+  para que QAs no-Java puedan agregar escenarios sin recompilar.
+
+---------------------------------------------------
+COSAS QUE PASARON DURANTE EL DESARROLLO Y EJECUCION
+---------------------------------------------------
+
+- Durante la primera ejecucion en Chrome aparecio un popup nativo del
+  browser advirtiendo que la contraseña "secret_sauce" estaba en una
+  filtracion de datos (el password leak detection de Chrome). Como SauceDemo
+  usa credenciales publicas conocidas, ese check del browser interrumpe el
+  flujo del test. Lo solucione agregando preferencias al DriverFactory para
+  deshabilitar el password manager y la deteccion de filtraciones
+  (credentials_enable_service, profile.password_manager_enabled,
+  profile.password_manager_leak_detection). Aplicado tambien a Edge y
+  Firefox con sus prefs equivalentes.
+
+- Selenium 4.16.1 emite un warning sobre Chrome DevTools Protocol (CDP)
+  cuando el browser instalado es una version mas nueva que la soportada
+  por la libreria. En mi maquina, Chrome 148 vs CDP soportado hasta v124.
+  No bloquea la ejecucion ni afecta funcionalidad: CDP se usa para features
+  avanzadas (network interception, geolocation, full-page screenshots) que
+  este test no necesita.
+
+- Tiempo de ejecucion del flujo completo en Chrome (no-headless, local):
+  ~2.2 segundos para el test y ~5 segundos en total incluyendo el spin-up
+  del browser. Rapido y consistente entre corridas.
+
+- Resultado del test en Chrome: PASSED. Todas las aserciones (cart count,
+  items en cart, subtotal, items en step 2, payment info, shipping info,
+  mensaje de confirmacion) pasaron en la primera ejecucion exitosa.
+
+- Probe Allure como reporter pero lo termine sacando. 
+  La razon: para un test happy-path unico, configurar y
+  explicar Allure (incluyendo el CLI externo) era overkill. Se reemplazo
+  por un reporting custom en TestListener que genera target/test-results.json
+  con categorias PASSED/BUG/FAILED, mas claro y portable.
+

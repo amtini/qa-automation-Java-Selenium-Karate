@@ -1,0 +1,38 @@
+# Build output
+target/
+build/
+out/
+
+# IDE - IntelliJ
+.idea/
+*.iml
+*.iws
+*.ipr
+
+# IDE - VSCode
+.vscode/
+.classpath
+.project
+.settings/
+bin/
+
+# IDE - Eclipse
+.factorypath
+
+# Logs
+*.log
+logs/
+
+# Screenshots from test failures
+screenshots/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment overrides (system properties documented in .env.example)
+.env
+
+# Karate reports
+target/karate-reports/
+target/cucumber-html-reports/

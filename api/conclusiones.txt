@@ -1,0 +1,197 @@
+----------------------------
+SOBRE LA EVOLUCION DEL SUITE
+----------------------------
+
+Los feature files de Karate son artefactos vivos. Tienen que evolucionar
+a medida que la API cambia: cuando un endpoint modifica su schema, su
+status code o su comportamiento, el feature es el primer lugar donde
+hay que tocar. Mientras el contrato de la API se mantenga, el test
+sigue pasando.
+
+-----------------------------------------------
+DECISIONES DE DISEÑO TOMADAS Y SU JUSTIFICACION
+-----------------------------------------------
+
+1. Karate como framework
+   - Use Karate porque escribir tests de API en Gherkin se lee mas
+     facil que en Java puro, y un QA no-Java igual lo puede mantener.
+   - Ademas trae todo armado de fabrica: cliente HTTP, validacion de
+     JSON, manejo de paths y params, reporte HTML rico. Con RestAssured
+     habria que sumar mas librerias para llegar a lo mismo.
+
+2. Un solo Scenario con 4 steps encadenados
+   - La consigna habla de "la mascota ingresada" y "la mascota
+     modificada". Los articulos definidos dejan claro que es la misma
+     mascota durante todo el flujo.
+   - Asi que arme un solo Scenario con los 4 steps encadenados
+     (POST -> GET por ID -> PUT -> GET por status), compartiendo petId
+     y nombre entre operaciones. La alternativa de 4 scenarios separados
+     necesitaria un POST de setup en cada uno y mas viajes al sandbox.
+
+3. petId aleatorio en runtime
+   - En el Background genero un petId random entre 1.000.000 y 2.000.000.
+   - El sandbox de PetStore es publico y compartido. Si hardcodeo un
+     ID puedo chocar con la mascota de otro usuario y el test rompe
+     sin que haya un bug real.
+
+4. Variables centralizadas en el Background
+   - petId, originalName y updatedName los declaro una sola vez en
+     el Background y los reuso en los 4 steps.
+   - El feature queda mas limpio y se ve a simple vista que es el
+     mismo recurso de punta a punta.
+
+5. karate-config.js como unico lugar de configuracion
+   - La baseUrl, el factory del Pet y otros helpers viven en
+     karate-config.js. Los features no hardcodean URLs ni objetos.
+   - Si manana cambia el entorno o la forma del Pet, toco ese archivo
+     y los features quedan intactos.
+
+6. Tres validaciones independientes por step
+   - En cada uno de los 4 steps valido tres cosas distintas:
+     * Que el response cumpla el schema del Pet (la forma).
+     * Que el header Content-Type sea application/json.
+     * Que los datos puntuales (id, name, status) sean los que mande.
+   - Si rompe la forma es la API cambiando estructura. Si rompe el
+     header es un cambio en el Content-Type. Si rompen los datos es
+     un bug logico. Cada falla apunta a un lugar distinto.
+
+7. JUnit 5 como runner via PetRunner.java
+   - Maven corre clases .java, no .feature directamente. Asi que arme
+     PetRunner.java como envoltura minima de 4 lineas que JUnit detecta
+     y que llama a Karate.run("pet").
+   - Toda la logica del test esta en el .feature; el runner es solo
+     un puente.
+
+8. Reporting
+   - Para el API uso los reportes que Karate genera solo en
+     target/karate-reports/ (HTML y JSON).
+   - Para el E2E arme un TestListener que escribe test-results.json
+     con passed / bugs / failed / skipped.
+   - Las integraciones con Slack, Jira o lo que sea las pense afuera
+     del test code: un script lee el JSON y dispara la accion.
+   - Mejora futura: unificar ambos JSON en uno solo.
+
+9. Soporte para multiples entornos
+   - karate-config.js lee la variable karate.env (default "dev"). Si
+     corro mvn test -Dkarate.env=staging, baseUrl apunta al entorno
+     de staging en vez del default.
+   - Asi el mismo suite corre contra distintos entornos (dev, staging,
+     mock local, prod) sin tocar los features. Las URLs alternativas
+     son placeholders porque PetStore solo expone el sandbox publico,
+     pero el patron queda listo para una API privada con varios
+     deployments.
+
+10. Schema reusable para validar la forma del response
+    - En petContract.feature defini la forma esperada del Pet
+      (petShape: tipos de cada campo y enums validos). En cada step
+      del feature hago match contra ese schema.
+    - Si la API saca un campo o cambia un tipo, el test rompe ahi
+      mismo sin tener que andar revisando que campos miré donde. Uso
+      match contains y no match == para que si agregan campos nuevos
+      el test siga pasando.
+
+11. Factory defaultPet en karate-config.js
+    - El body comun del Pet (category, photoUrls, tags) lo arme como
+      una function defaultPet(petId, name, status) en karate-config.js.
+      El POST y el PUT la llaman variando solo esos 3 parametros.
+    - Si manana cambia la estructura del request, modifico el factory
+      y los dos endpoints quedan actualizados juntos. Evita duplicar
+      el objeto y deja el feature mas legible.
+
+12. Check de tiempo de respuesta
+    - En cada helper agregue un assert responseTime < 3000 (3 segundos)
+      despues del check de status.
+    - No es un test de performance, pero si un endpoint empieza a
+      tardar mas de eso ya hay algo raro que mirar antes de que el
+      monitoring se entere. Para PetStore use 3 segundos porque es
+      sandbox publico y los tiempos varian. En una API productiva
+      apretaria mas el numero.
+
+13. Validacion del Content-Type
+    - En cada helper valido que el Content-Type del response sea
+      application/json.
+    - A veces los bugs aparecen en los headers (charset mal seteado,
+      content-type que cambia despues de un proxy). Validar el header
+      me da la garantia de que parseo JSON porque la API lo declara
+      como JSON, no por casualidad.
+
+--------------------------------------------
+LIMITACIONES OBSERVADAS DE LA API (PetStore)
+--------------------------------------------
+
+PetStore es un sandbox publico de demos. Eso trae cosas que en una
+API real no se aceptarian, y que condicionan lo que se puede testear:
+
+- Datos compartidos: cualquiera puede crear, modificar o borrar
+  recursos. Mi pet puede no sobrevivir si otro usuario lo borra. Por
+  eso uso un petId random grande, para minimizar colisiones.
+
+- A veces el findByStatus tarda un toque en reflejar los cambios del
+  PUT. Si el test corre justo en ese momento, el filtro puede no
+  encontrar la mascota recien actualizada.
+
+- No hay idempotency keys, transactionId ni createdAt en los responses.
+  En una API de pagos o bancaria esos patrones son imprescindibles;
+  aca no se pueden demostrar.
+
+- Los endpoints estan completamente abiertos, sin autenticacion real.
+  En un sistema serio habria que testear login con tokens (JWT,
+  OAuth2, refresh). Aca no aplica.
+
+-----------------------------
+MEJORAS FUTURAS PARA EL SUITE
+-----------------------------
+
+Tests que se podrian sumar sin tocar el flujo principal:
+
+- Casos negativos: GET con ID inexistente -> 404, POST con body
+  invalido -> 4xx, PUT con campos requeridos faltantes, etc.
+
+- Concurrencia: PUT simultaneos sobre el mismo recurso para validar
+  locking (ETag / If-Match) si la API lo soporta.
+
+Infraestructura:
+
+- CI/CD con GitHub Actions corriendo el suite en cada PR.
+- Mock local con WireMock para no depender del uptime del sandbox.
+- Tests de performance basica con Karate Gatling.
+
+Cosas que aplicarian en una API bancaria o productiva (no se pueden
+mostrar aca):
+
+- Idempotency keys (mismo key + body -> misma respuesta).
+- Flow completo de auth: login -> token -> refresh -> logout.
+- Audit trail en responses (createdAt, transactionId).
+- Rate limiting (headers X-RateLimit-Remaining, 429).
+- HTTPS, ciphers, cert pinning.
+
+---------------------------------------------------
+COSAS QUE PASARON DURANTE EL DESARROLLO Y EJECUCION
+---------------------------------------------------
+
+- Karate genera un reporte HTML rico (karate-reports/karate-summary.html)
+  sin configurar nada. Trae scenario tree, request y response completos
+  de cada step, tiempos. Util para inspeccion manual.
+
+- El feature completo corre en ~2.7 segundos para las 4 operaciones
+  encadenadas. Razonable para un sandbox publico.
+
+- En todas mis corridas, findByStatus respondio bien y la mascota
+  recien actualizada aparecio en el array. La eventual consistency
+  que menciono en Limitaciones nunca se gatillo, quedo como posibilidad
+  documentada y no como algo que vi en vivo.
+
+- Algo que me paso con contract testing en sandboxes publicos: probe
+  aplicar match each contains petShape sobre TODOS los pets devueltos
+  por findByStatus y el test fallaba, porque otros usuarios crearon
+  mascotas con datos sucios (algunas sin category, otras con name
+  basura). La leccion: el schema solo aplica a recursos propios, no a
+  datos de terceros. La solucion fue filtrar el array por petId y
+  recien ahi validar el schema sobre mi mascota.
+
+- Para integrar Karate con Maven Surefire arme un runner minimo de
+  JUnit 5 (PetRunner.java) y configure testResources en el pom.xml
+  para que el .feature ubicado en src/test/java se copie al classpath
+  de test.
+
+- Los 4 steps del scenario pasaron en la primera ejecucion.

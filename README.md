@@ -75,7 +75,7 @@ Default values live in `src/test/resources/config.properties` (E2E) and `src/tes
 
 Per-exercise deliverables:
 
-- `e2e/readme.txt`: step-by-step execution instructions for the SauceDemo E2E suite (Spanish)
-- `e2e/conclusiones.txt`: findings and design decisions for the E2E suite (English)
-- `api/readme.txt`: step-by-step execution instructions for the PetStore API suite (Spanish)
-- `api/conclusiones.txt`: findings and design decisions for the API suite (English)
+- `e2e/readme.txt`: step-by-step execution instructions for the SauceDemo E2E suite
+- `e2e/conclusiones.txt`: findings and design decisions for the E2E suite
+- `api/readme.txt`: step-by-step execution instructions for the PetStore API suite
+- `api/conclusiones.txt`: findings and design decisions for the API suite

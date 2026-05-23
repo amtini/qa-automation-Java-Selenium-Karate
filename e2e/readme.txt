@@ -1,129 +1,131 @@
 -----------
-DESCRIPCION
+DESCRIPTION
 -----------
 
-Test E2E del flujo de compra en SauceDemo (https://www.saucedemo.com) con
-Selenium WebDriver 4, JUnit 5 y Page Object Model. Java 17, Maven.
+E2E test of the checkout flow on SauceDemo (https://www.saucedemo.com)
+with Selenium WebDriver 4, JUnit 5 and Page Object Model. Java 17, Maven.
 
-El test cubre:
-- Login con standard_user / secret_sauce.
-- Agregar dos productos al carrito (uno desde la lista de inventario y
-  otro desde la pagina de detalle).
-- Validar contenido del carrito (nombre, precio, descripcion, subtotal).
-- Completar el formulario de checkout con datos generados (DataFaker).
-- Validar el checkout step 2 (items, subtotal, payment info, shipping info).
-- Finalizar la compra y verificar el mensaje de confirmacion.
+The test covers:
+- Login with standard_user / secret_sauce.
+- Adding two products to the cart (one from the inventory list and
+  another from the detail page).
+- Validating the cart contents (name, price, description, subtotal).
+- Filling out the checkout form with generated data (DataFaker).
+- Validating checkout step 2 (items, subtotal, payment info, shipping info).
+- Completing the purchase and verifying the confirmation message.
 
-----------
-REQUISITOS
-----------
+------------
+REQUIREMENTS
+------------
 
-- Java JDK 17 o superior
+- Java JDK 17 or higher
 - Apache Maven 3.9.x
-- Chrome o Firefox instalado localmente
+- Chrome or Firefox installed locally
 
-Pasos de instalacion en la seccion siguiente (asumen Windows 10/11).
-Selenium 4 resuelve los drivers automaticamente via Selenium Manager,
-asi que no hace falta instalar chromedriver ni geckodriver.
+Installation steps in the next section (they assume Windows 10/11).
+Selenium 4 resolves the drivers automatically via Selenium Manager, so
+there is no need to install chromedriver or geckodriver.
 
----------------------
-INSTALACION (Windows)
----------------------
+----------------------
+INSTALLATION (Windows)
+----------------------
 
-Esta guia cubre Windows 10/11 unicamente. En Mac y Linux los pasos
-de instalacion son distintos (brew/apt para instalar, ~/.zshrc o
-~/.bashrc para configurar PATH y JAVA_HOME) y no estan documentados
-aca. El objetivo es el mismo en cualquier OS: que java -version y
-mvn -version respondan en la terminal con las versiones correctas.
+This guide covers Windows 10/11 only. On Mac and Linux the installation
+steps are different (brew/apt to install, ~/.zshrc or ~/.bashrc to
+configure PATH and JAVA_HOME) and are not documented here. The goal is
+the same on any OS: that java -version and mvn -version respond in the
+terminal with the correct versions.
 
-1. Java JDK 17 (Eclipse Temurin recomendado):
+1. Java JDK 17 (Eclipse Temurin recommended):
        https://adoptium.net/temurin/releases/?version=17
-   Bajar el MSI y correrlo. Durante el wizard, dejar marcadas las
-   opciones "Set JAVA_HOME variable" y "Add to PATH" (vienen activas
-   por default). Asi el instalador hace el laburo de env vars solo
-   y no hay que tocar nada a mano.
+   Download the MSI and run it. During the wizard, keep the options
+   "Set JAVA_HOME variable" and "Add to PATH" checked (they are active
+   by default). This way the installer handles the env vars on its own
+   and you don't have to touch anything by hand.
 
 2. Apache Maven 3.9.x:
        https://maven.apache.org/download.cgi
-   Bajar el "Binary zip archive" (NO bajar el Source ni el Preview
-   4.x, son cosas distintas). Extraer el zip en tu carpeta de
-   usuario, queda:
-       C:\Users\<tu-usuario>\apache-maven-3.9.X\
+   Download the "Binary zip archive" (do NOT download the Source or the
+   Preview 4.x, those are different things). Extract the zip into your
+   user folder, it ends up at:
+       C:\Users\<your-user>\apache-maven-3.9.X\
 
-3. Agregar Maven al PATH del usuario (eleji una):
-   - PowerShell, una linea:
+3. Add Maven to the user PATH (choose one):
+   - PowerShell, one line:
        [Environment]::SetEnvironmentVariable("Path", [Environment]::GetEnvironmentVariable("Path", "User") + ";$env:USERPROFILE\apache-maven-3.9.X\bin", "User")
-     (Ajustar 3.9.X a la version que descargaste)
+     (Adjust 3.9.X to the version you downloaded)
    - UI:
-       Win + R -> sysdm.cpl -> "Opciones avanzadas" ->
-       "Variables de entorno..." -> bajo "Variables de usuario"
-       editar Path -> "Nuevo" -> pegar la ruta a bin\.
+       Win + R -> sysdm.cpl -> "Advanced" ->
+       "Environment Variables..." -> under "User variables"
+       edit Path -> "New" -> paste the path to bin\.
 
-4. Cerrar VSCode (o tu IDE/terminal) entero y reabrirlo. Si estaba
-   abierto durante los pasos anteriores, no ve los cambios de PATH
-   ni JAVA_HOME hasta que reinicia.
+4. Close VSCode (or your IDE/terminal) completely and reopen it. If it
+   was open during the previous steps, it doesn't see the PATH or
+   JAVA_HOME changes until it restarts.
 
-5. Verificar en una terminal nueva:
-       java -version       (deberia decir Temurin 17.x.x)
-       mvn -version        (deberia decir Maven 3.9.X reconociendo el JDK 17)
+5. Verify in a new terminal:
+       java -version       (should say Temurin 17.x.x)
+       mvn -version        (should say Maven 3.9.X recognizing the JDK 17)
 
-Si los 3 responden bien, todo listo para correr los tests.
+If all 3 respond correctly, everything is ready to run the tests.
 
 ---------
-EJECUCION
+EXECUTION
 ---------
 
-Desde la raiz del proyecto:
+From the project root:
 
     mvn test -Dtest=CheckoutTest
 
-Parametros opcionales:
+Optional parameters:
 
     -Dbrowser=chrome | firefox               (default: chrome)
     -Dheadless=true | false                  (default: false)
     -DbaseUrl=<url>                          (default: saucedemo.com)
     -Denv=dev | staging | mock | prod        (default: dev)
 
-Ejemplo combinando flags:
+Example combining flags:
 
     mvn test -Dtest=CheckoutTest -Dbrowser=firefox -Dheadless=true
 
-La primera ejecucion tarda mas porque descarga las dependencias al
-repositorio local de Maven. Las siguientes son inmediatas.
+The first execution takes longer because it downloads the dependencies
+to the local Maven repository. The following ones are immediate.
 
---------
-REPORTES
---------
+-------
+REPORTS
+-------
 
-Despues de correr los tests, los reportes quedan en target/:
+After running the tests, the reports are left in target/:
 
 - target/test-results.json
-    JSON custom con totales (passed / bugs / failed / skipped) y detalle
-    por test: status, duracion, motivo de la falla, ubicacion en el codigo
-    y path al screenshot si fallo. Pensado para alimentar trackers como
-    Jira o Linear, o dashboards propios.
+    Custom JSON with totals (passed / bugs / failed / skipped) and detail
+    per test: status, duration, failure reason, location in the code and
+    path to the screenshot if it failed. Designed to feed trackers like
+    Jira or Linear, or custom dashboards.
 
 - target/surefire-reports/
-    Reportes nativos de JUnit 5/Surefire (HTML y .txt).
+    Native JUnit 5/Surefire reports (HTML and .txt).
 
 - screenshots/
-    Screenshots automaticos cuando un test falla. Naming:
-    {nombreDelTest}-{yyyyMMdd-HHmmss}.png
+    Automatic screenshots when a test fails. Naming:
+    {testName}-{yyyyMMdd-HHmmss}.png
 
 ---------------
 TROUBLESHOOTING
 ---------------
 
-- "mvn" no se reconoce: Maven no esta en el PATH. Abrir una terminal nueva
-  despues de instalarlo.
-- Tests lentos o timeouts: aumentar explicitWaitSeconds en
-  src/test/resources/config.properties (default es 10 segundos).
-- Browser no abre: actualizar Chrome o Firefox a la ultima version.
-- Windows te pide permisos de admin o te muestra una pantalla de
-  SmartScreen la primera vez que arranca Chrome: es Selenium Manager
-  descargando el chromedriver para tu version de Chrome. Aceptalo;
-  despues queda cacheado en %USERPROFILE%\.cache\selenium y no molesta mas.
-- Edge no esta soportado. Microsoft retiro el CDN azureedge.net donde
-  Selenium 4.16.1 busca el msedgedriver, asi que -Dbrowser=edge falla
-  con un DNS error. Para sumarlo habria que subir selenium.version en
-  pom.xml a >= 4.21, cosa que quedo fuera de scope. Usar Chrome o Firefox.
+- "mvn" not recognized: Maven is not in the PATH. Open a new terminal
+  after installing it.
+- Slow tests or timeouts: increase explicitWaitSeconds in
+  src/test/resources/config.properties (default is 10 seconds).
+- Browser doesn't open: update Chrome or Firefox to the latest version.
+- Windows asks you for admin permissions or shows you a SmartScreen
+  prompt the first time Chrome starts: it's Selenium Manager downloading
+  the chromedriver for your version of Chrome. Accept it; afterwards it
+  stays cached in %USERPROFILE%\.cache\selenium and doesn't bother you
+  anymore.
+- Edge is not supported. Microsoft retired the azureedge.net CDN where
+  Selenium 4.16.1 looks for the msedgedriver, so -Dbrowser=edge fails
+  with a DNS error. To add it, you would have to bump selenium.version
+  in pom.xml to >= 4.21, which was left out of scope. Use Chrome or
+  Firefox.

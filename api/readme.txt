@@ -1,130 +1,130 @@
 -----------
-DESCRIPCION
+DESCRIPTION
 -----------
 
-Test del flujo CRUD sobre el recurso /pet de la API publica de PetStore
-(https://petstore.swagger.io) usando Karate, con JUnit 5 como runner.
+Test of the CRUD flow over the /pet resource of the public PetStore API
+(https://petstore.swagger.io) using Karate, with JUnit 5 as the runner.
 Java 17, Maven.
 
-El test cubre las 4 operaciones encadenadas sobre una misma mascota:
+The test covers the 4 chained operations over the same pet:
 
-- POST /pet: agregar una mascota a la tienda con status "available".
-- GET /pet/{id}: consultar la mascota recien creada usando su ID.
-- PUT /pet: actualizar el nombre y cambiar el status a "sold".
-- GET /pet/findByStatus?status=sold: buscar la mascota actualizada por
-  su status y validar que aparezca con el name modificado.
+- POST /pet: add a pet to the store with status "available".
+- GET /pet/{id}: query the just-created pet using its ID.
+- PUT /pet: update the name and change the status to "sold".
+- GET /pet/findByStatus?status=sold: search for the updated pet by its
+  status and validate that it appears with the modified name.
 
-El petId se genera aleatoriamente en cada corrida para evitar colisiones
-con otros usuarios del sandbox publico de PetStore.
+The petId is generated randomly on each run to avoid collisions with
+other users of the public PetStore sandbox.
 
-----------
-REQUISITOS
-----------
+------------
+REQUIREMENTS
+------------
 
-- Java JDK 17 o superior
+- Java JDK 17 or higher
 - Apache Maven 3.9.x
-- Conexion a internet para alcanzar https://petstore.swagger.io
+- Internet connection to reach https://petstore.swagger.io
 
-Pasos de instalacion en la seccion siguiente (asumen Windows 10/11).
+Installation steps in the next section (they assume Windows 10/11).
 
----------------------
-INSTALACION (Windows)
----------------------
+----------------------
+INSTALLATION (Windows)
+----------------------
 
-Si ya hiciste el setup para el modulo E2E (ver e2e/readme.txt), saltate
-esta seccion: es exactamente el mismo Java 17 + Maven 3.9.x, no hace
-falta instalarlos de nuevo.
+If you already did the setup for the E2E module (see e2e/readme.txt),
+skip this section: it's exactly the same Java 17 + Maven 3.9.x, there's
+no need to install them again.
 
-Esta guia cubre Windows 10/11 unicamente. En Mac y Linux los pasos
-de instalacion son distintos (brew/apt para instalar, ~/.zshrc o
-~/.bashrc para configurar PATH y JAVA_HOME) y no estan documentados
-aca. El objetivo es el mismo en cualquier OS: que java -version y
-mvn -version respondan en la terminal con las versiones correctas.
+This guide covers Windows 10/11 only. On Mac and Linux the installation
+steps are different (brew/apt to install, ~/.zshrc or ~/.bashrc to
+configure PATH and JAVA_HOME) and are not documented here. The goal is
+the same on any OS: that java -version and mvn -version respond in the
+terminal with the correct versions.
 
-1. Java JDK 17 (Eclipse Temurin recomendado):
+1. Java JDK 17 (Eclipse Temurin recommended):
        https://adoptium.net/temurin/releases/?version=17
-   Bajar el MSI y correrlo. Durante el wizard, dejar marcadas las
-   opciones "Set JAVA_HOME variable" y "Add to PATH" (vienen activas
-   por default). Asi el instalador hace el laburo de env vars solo
-   y no hay que tocar nada a mano.
+   Download the MSI and run it. During the wizard, keep the options
+   "Set JAVA_HOME variable" and "Add to PATH" checked (they are active
+   by default). This way the installer handles the env vars on its own
+   and you don't have to touch anything by hand.
 
 2. Apache Maven 3.9.x:
        https://maven.apache.org/download.cgi
-   Bajar el "Binary zip archive" (NO bajar el Source ni el Preview
-   4.x, son cosas distintas). Extraer el zip en tu carpeta de
-   usuario, queda:
-       C:\Users\<tu-usuario>\apache-maven-3.9.X\
+   Download the "Binary zip archive" (do NOT download the Source or the
+   Preview 4.x, those are different things). Extract the zip into your
+   user folder, it ends up at:
+       C:\Users\<your-user>\apache-maven-3.9.X\
 
-3. Agregar Maven al PATH del usuario (eleji una):
-   - PowerShell, una linea:
+3. Add Maven to the user PATH (choose one):
+   - PowerShell, one line:
        [Environment]::SetEnvironmentVariable("Path", [Environment]::GetEnvironmentVariable("Path", "User") + ";$env:USERPROFILE\apache-maven-3.9.X\bin", "User")
-     (Ajustar 3.9.X a la version que descargaste)
+     (Adjust 3.9.X to the version you downloaded)
    - UI:
-       Win + R -> sysdm.cpl -> "Opciones avanzadas" ->
-       "Variables de entorno..." -> bajo "Variables de usuario"
-       editar Path -> "Nuevo" -> pegar la ruta a bin\.
+       Win + R -> sysdm.cpl -> "Advanced" ->
+       "Environment Variables..." -> under "User variables"
+       edit Path -> "New" -> paste the path to bin\.
 
-4. Cerrar VSCode (o tu IDE/terminal) entero y reabrirlo. Si estaba
-   abierto durante los pasos anteriores, no ve los cambios de PATH
-   ni JAVA_HOME hasta que reinicia.
+4. Close VSCode (or your IDE/terminal) completely and reopen it. If it
+   was open during the previous steps, it doesn't see the PATH or
+   JAVA_HOME changes until it restarts.
 
-5. Verificar en una terminal nueva:
-       java -version       (deberia decir Temurin 17.x.x)
-       mvn -version        (deberia decir Maven 3.9.X reconociendo el JDK 17)
+5. Verify in a new terminal:
+       java -version       (should say Temurin 17.x.x)
+       mvn -version        (should say Maven 3.9.X recognizing the JDK 17)
 
-Si los 3 responden bien, todo listo para correr los tests.
+If all 3 respond correctly, everything is ready to run the tests.
 
 ---------
-EJECUCION
+EXECUTION
 ---------
 
-Desde la raiz del proyecto:
+From the project root:
 
     mvn test -Dtest=PetRunner
 
-O bien, correr el suite completo (incluye tambien el E2E con Selenium):
+Or, run the full suite (also includes the E2E with Selenium):
 
     mvn test
 
-Con env switching:
+With env switching:
 
     mvn test -Dtest=PetRunner -Dkarate.env=staging
 
-Valores soportados: dev (default), staging, mock, prod.
+Supported values: dev (default), staging, mock, prod.
 
-La primera ejecucion tarda mas porque descarga las dependencias al
-repositorio local de Maven. Las siguientes son inmediatas.
+The first execution takes longer because it downloads the dependencies
+to the local Maven repository. The following ones are immediate.
 
---------
-REPORTES
---------
+-------
+REPORTS
+-------
 
-Despues de correr los tests, los reportes quedan en target/:
+After running the tests, the reports are left in target/:
 
 - target/karate-reports/karate-summary.html
-    Reporte HTML nativo de Karate. Tiene el scenario tree, request y
-    response completos de cada step, los asserts validados y los tiempos.
-    Abrirlo en cualquier browser para inspeccionar el flujo paso a paso.
-    En la misma carpeta queda karate-summary.json con la misma info en
-    formato JSON, util para integraciones.
+    Native Karate HTML report. It has the scenario tree, full request and
+    response of each step, the validated asserts and the timings. Open it
+    in any browser to inspect the flow step by step. In the same folder
+    there is karate-summary.json with the same info in JSON format,
+    useful for integrations.
 
 - target/test-results.json
-    JSON del modulo E2E (escrito por el TestListener). Si corres solo
-    PetRunner no se actualiza, porque el listener engancha en @Test de
-    JUnit y no en @Karate.Test. Para el resultado del API mirar el
-    karate-summary.html o el .json de arriba.
+    JSON from the E2E module (written by the TestListener). If you run
+    only PetRunner it is not updated, because the listener hooks into
+    JUnit's @Test and not into @Karate.Test. For the API result, look at
+    the karate-summary.html or the .json above.
 
 - target/surefire-reports/
-    Reportes nativos de Maven Surefire (XML y .txt).
+    Native Maven Surefire reports (XML and .txt).
 
 ---------------
 TROUBLESHOOTING
 ---------------
 
-- "mvn" no se reconoce: Maven no esta en el PATH. Abrir una terminal nueva
-  despues de instalarlo.
-- Connection refused / timeout al alcanzar petstore.swagger.io: la API
-  publica puede estar caida o saturada. Verificar con:
+- "mvn" not recognized: Maven is not in the PATH. Open a new terminal
+  after installing it.
+- Connection refused / timeout reaching petstore.swagger.io: the public
+  API may be down or saturated. Verify with:
       curl "https://petstore.swagger.io/v2/pet/findByStatus?status=available"
-- El findByStatus a veces no refleja inmediatamente los cambios hechos
-  por el PUT (eventual consistency del sandbox publico). Reintentar.
+- findByStatus sometimes doesn't immediately reflect the changes made by
+  the PUT (eventual consistency of the public sandbox). Retry.
